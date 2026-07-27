@@ -1,0 +1,313 @@
+// ============================================================
+// Artist — Prisma Schema
+// Stage 1: Buyer-side marketplace, demo products & artisans.
+// Seller/artisan model exists now so product data (badges,
+// profiles, "Meet the Makers") is real from day one, even
+// though seller self-registration/auth ships in a later stage.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------
+
+enum Role {
+  BUYER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NOT_APPLICABLE // demo/seed artisans, pre-seller-onboarding
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PayoutStatus {
+  NOT_APPLICABLE
+  PENDING
+  PAID
+}
+
+// ------------------------------------------------------------
+// USERS (Buyers)
+// ------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String? // null when signed up via Google
+  googleId     String?  @unique
+  avatarUrl    String?
+  role         Role     @default(BUYER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  wishlist     WishlistItem[]
+  cartItems    CartItem[]
+  reviews      Review[]
+  orders       Order[]        @relation("OrderBuyer")
+  confirmedOrders Order[]     @relation("OrderConfirmedBy")
+  recentlyViewed RecentlyViewed[]
+
+  @@map("users")
+}
+
+// ------------------------------------------------------------
+// ARTISANS / SELLERS
+// ------------------------------------------------------------
+
+model Artisan {
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  bio                String
+  story              String? // longer "Meet the Makers" narrative
+  avatarUrl          String?
+  coverImageUrl      String?
+  location            String
+  craftSpecialty      String // e.g. "Terracotta Pottery"
+  yearsOfExperience   Int?
+  verified            Boolean            @default(false)
+  verificationStatus  VerificationStatus @default(NOT_APPLICABLE)
+  ratingAvg           Float              @default(0)
+  ratingCount         Int                @default(0)
+  isFeaturedMaker     Boolean            @default(false)
+
+  // Future: seller auth fields (unused in Stage 1)
+  email               String?            @unique
+  passwordHash        String?
+  govIdUrl            String?
+  bankDetailsJson      Json?
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  products           Product[]
+  orderItems         OrderItem[]
+
+  @@map("artisans")
+}
+
+// ------------------------------------------------------------
+// CATEGORIES
+// ------------------------------------------------------------
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  displayOrder Int       @default(0)
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+// ------------------------------------------------------------
+// PRODUCTS
+// ------------------------------------------------------------
+
+model Product {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  shortDescription String
+  story          String   // craft storytelling copy for detail page
+  craftProcess   String[] // ordered steps
+  materials      String[]
+  images         String[] // Cloudinary URLs, first = primary
+  price          Decimal  @db.Decimal(10, 2)
+  discountPrice  Decimal? @db.Decimal(10, 2)
+  currency       String   @default("INR")
+  stock          Int      @default(10)
+  location       String
+
+  ratingAvg      Float    @default(0)
+  ratingCount    Int      @default(0)
+
+  isFeatured     Boolean  @default(false) // Featured Collection
+  isEditorsPick  Boolean  @default(false) // Editor's Picks
+  isTrending     Boolean  @default(false) // Trending Products (seed flag; live trending computed via Redis)
+
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id])
+
+  artisanId      String
+  artisan        Artisan  @relation(fields: [artisanId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  reviews        Review[]
+  wishlistedBy   WishlistItem[]
+  cartOf         CartItem[]
+  orderItems     OrderItem[]
+  recentlyViewedBy RecentlyViewed[]
+
+  @@index([categoryId])
+  @@index([artisanId])
+  @@index([isFeatured])
+  @@index([isEditorsPick])
+  @@index([isTrending])
+  @@map("products")
+}
+
+// ------------------------------------------------------------
+// REVIEWS
+// ------------------------------------------------------------
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId]) // one review per buyer per product
+  @@index([productId])
+  @@map("reviews")
+}
+
+// ------------------------------------------------------------
+// CART
+// ------------------------------------------------------------
+
+model CartItem {
+  id        String   @id @default(cuid())
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("cart_items")
+}
+
+// ------------------------------------------------------------
+// WISHLIST
+// ------------------------------------------------------------
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
+// ------------------------------------------------------------
+// RECENTLY VIEWED (durable backstop; Redis holds the hot path)
+// ------------------------------------------------------------
+
+model RecentlyViewed {
+  id        String   @id @default(cuid())
+  viewedAt  DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("recently_viewed")
+}
+
+// ------------------------------------------------------------
+// ORDERS (minimal, supports "Buy Now" / checkout stub)
+// ------------------------------------------------------------
+
+model Order {
+  id            String        @id @default(cuid())
+  status        OrderStatus   @default(PENDING)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+
+  // Payment (Razorpay)
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  paymentStatus     PaymentStatus @default(PENDING)
+
+  // Delivery
+  shippingAddress Json?
+
+  // Admin confirms delivery happened before sellers get marked payable
+  adminConfirmedAt DateTime?
+  adminConfirmedBy String?
+  confirmedByUser  User?         @relation("OrderConfirmedBy", fields: [adminConfirmedBy], references: [id])
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  userId        String
+  user          User          @relation("OrderBuyer", fields: [userId], references: [id])
+
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String       @id @default(cuid())
+  quantity   Int
+  priceEach  Decimal      @db.Decimal(10, 2)
+
+  // Commission split, locked in at checkout time
+  platformFee   Decimal      @default(0) @db.Decimal(10, 2)
+  sellerAmount  Decimal      @default(0) @db.Decimal(10, 2)
+  payoutStatus  PayoutStatus @default(NOT_APPLICABLE)
+  payoutMarkedAt DateTime?
+
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId  String
+  product    Product      @relation(fields: [productId], references: [id])
+
+  artisanId  String?
+  artisan    Artisan?     @relation(fields: [artisanId], references: [id])
+
+  @@map("order_items")
+}

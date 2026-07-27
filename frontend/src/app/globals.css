@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+:root {
+  /* Canvas — warm stone/parchment, not pure cream */
+  --color-stone: #f2eee1;
+  --color-stone-deep: #e8e1cc;
+  --color-stone-line: #d8cfb8;
+
+  /* Ink — deep indigo-black, doubles as dark-mode / footer surface */
+  --color-ink: #1c2233;
+  --color-ink-soft: #3a4256;
+
+  /* Primary accent — natural indigo dye */
+  --color-indigo: #33456b;
+  --color-indigo-deep: #232e49;
+  --color-indigo-soft: #dbe1ec;
+
+  /* Secondary accent — fired terracotta clay, used sparingly */
+  --color-terracotta: #b14d2a;
+  --color-terracotta-deep: #8f3b1f;
+
+  /* Tertiary accent — turmeric / aged brass */
+  --color-turmeric: #c4901f;
+
+  /* Quiet natural-dye green, used for success/verified micro-accents */
+  --color-sage: #6e7a54;
+
+  --background: var(--color-stone);
+  --foreground: var(--color-ink);
+}
+
+.dark {
+  --background: var(--color-ink);
+  --foreground: var(--color-stone);
+  --color-stone-line: #3a4256;
+}
+
+@theme inline {
+  --color-stone: var(--color-stone);
+  --color-stone-deep: var(--color-stone-deep);
+  --color-stone-line: var(--color-stone-line);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-indigo: var(--color-indigo);
+  --color-indigo-deep: var(--color-indigo-deep);
+  --color-indigo-soft: var(--color-indigo-soft);
+  --color-terracotta: var(--color-terracotta);
+  --color-terracotta-deep: var(--color-terracotta-deep);
+  --color-turmeric: var(--color-turmeric);
+  --color-sage: var(--color-sage);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
+* {
+  border-color: var(--color-stone-line);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  background: var(--color-terracotta);
+  color: var(--color-stone);
+}
+
+/* Wayfinding label style — the recurring "museum tag" typographic signature */
+.label-text {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+

@@ -1,0 +1,36 @@
+# This file does ONE job: run Postgres and Redis on your machine
+# without installing them manually. Your frontend and backend code
+# are NOT run through Docker here — you'll run those normally with
+# `npm run dev` in their own terminals. Docker is just standing in
+# for "a database and a cache server, already configured."
+#
+# Start both with:   docker compose up -d
+# Stop both with:     docker compose down
+# Stop AND wipe data:  docker compose down -v
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: artist-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: artisan_exhibition
+    ports:
+      - "5432:5432"          # host:container — lets your backend on localhost reach it
+    volumes:
+      - artist_pg_data:/var/lib/postgresql/data   # keeps your data after `docker compose down`
+
+  redis:
+    image: redis:7
+    container_name: artist-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - artist_redis_data:/data
+
+volumes:
+  artist_pg_data:
+  artist_redis_data:
