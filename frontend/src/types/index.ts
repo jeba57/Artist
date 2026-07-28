@@ -192,11 +192,17 @@ export interface AdminOrderSummary {
   status: OrderStatus;
   payment_status: PaymentStatus;
   total_amount: string;
+
+  buyer_name: string;
+  buyer_email: string;
+
+  artisan_names: string;
+  product_summary: string;
+  total_quantity: number;
+
   shipping_address: ShippingAddress;
   created_at: string;
   admin_confirmed_at: string | null;
-  buyer_name: string;
-  buyer_email: string;
 }
 
 export interface PendingPayout {
@@ -220,4 +226,25 @@ export interface ApiEnvelope<T> {
   message: string;
   data: T;
   meta?: PaginationMeta;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "BUYER" | "ADMIN";
+  order_count: number;
+  created_at: string;
+}
+
+export interface AdminStats {
+  total_orders: number;
+  pending_orders: number;
+  confirmed_orders: number;
+  shipped_orders: number;
+  delivered_orders: number;
+  total_revenue: string;
+  payouts_owed: string;
+  total_products: number;
+  total_users: number;
 }

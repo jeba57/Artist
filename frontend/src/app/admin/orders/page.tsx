@@ -15,10 +15,14 @@ export default function AdminOrdersPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
-    if (!accessToken) return;
-    setLoading(true);
-    api
-      .get<AdminOrderSummary[]>("/admin/orders?status=needs_confirmation", { token: accessToken })
+  if (!accessToken) return;
+
+  setLoading(true);
+
+  api
+    .get<AdminOrderSummary[]>("/admin/orders?statusFilter=PENDING", {
+      token: accessToken,
+    })
       .then((res) => setOrders(res.data))
       .catch((err) => setError(err instanceof ApiClientError ? err.message : "Failed to load orders."))
       .finally(() => setLoading(false));
@@ -26,18 +30,29 @@ export default function AdminOrdersPage() {
 
   useEffect(load, [accessToken]);
 
-  const confirmDelivery = async (orderId: string) => {
-    if (!accessToken) return;
-    setConfirmingId(orderId);
-    try {
-      await api.post(`/admin/orders/${orderId}/confirm`, undefined, { token: accessToken });
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Couldn't confirm this order.");
-    } finally {
-      setConfirmingId(null);
-    }
-  };
+  const advanceOrder = async (orderId: string) => {
+  if (!accessToken) return;
+
+  setConfirmingId(orderId);
+
+  try {
+    await api.post(
+      `/admin/orders/${orderId}/status`,
+      { status: "CONFIRMED" },
+      { token: accessToken }
+    );
+
+    load();
+  } catch (err) {
+    setError(
+      err instanceof ApiClientError
+        ? err.message
+        : "Couldn't update order."
+    );
+  } finally {
+    setConfirmingId(null);
+  }
+};
 
   if (!authLoading && (!user || user.role !== "ADMIN")) {
     return (
@@ -53,7 +68,9 @@ export default function AdminOrdersPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <p className="label-text text-terracotta">Admin</p>
-          <h1 className="mt-2 font-display text-3xl text-ink">Orders awaiting confirmation</h1>
+         <h1 className="mt-2 font-display text-3xl text-ink">
+  Pending Orders
+</h1>
         </div>
         <Link href="/admin/payouts" className="label-text text-indigo hover:text-terracotta transition-colors">
           View Payouts →
@@ -61,9 +78,8 @@ export default function AdminOrdersPage() {
       </div>
 
       <p className="mt-3 text-sm text-ink-soft/70 max-w-xl">
-        These orders have been paid for. Once the item has actually arrived with the buyer, click
-        Confirm — that marks the maker&rsquo;s payout as ready to send.
-      </p>
+  Review newly placed orders and confirm them before they move to the next stage of fulfilment.
+              </p>
 
       {error && <p className="mt-4 text-sm text-terracotta">{error}</p>}
 
@@ -78,20 +94,30 @@ export default function AdminOrdersPage() {
               <div>
                 <p className="font-display text-lg text-ink">Order #{o.id.slice(-8)}</p>
                 <p className="label-text text-ink-soft/50 mt-1">
-                  {o.buyer_name} · {o.buyer_email}
-                </p>
-                <p className="text-xs text-ink-soft/50 mt-1">
-                  {o.shipping_address.city} · {new Date(o.created_at).toLocaleDateString("en-IN")}
-                </p>
+  {o.buyer_name} · {o.buyer_email}
+</p>
+
+<p className="text-xs text-ink-soft/60 mt-1">
+  {o.product_summary}
+</p>
+
+<p className="text-xs text-ink-soft/50">
+  Artisan: {o.artisan_names}
+</p>
+
+<p className="text-xs text-ink-soft/50 mt-1">
+  Qty: {o.total_quantity} • {o.shipping_address.city} •{" "}
+  {new Date(o.created_at).toLocaleDateString("en-IN")}
+</p>
               </div>
               <div className="flex items-center gap-4">
                 <span className="font-medium text-ink">{formatPrice(Number(o.total_amount))}</span>
                 <button
-                  onClick={() => confirmDelivery(o.id)}
+                  onClick={() => advanceOrder(o.id)}
                   disabled={confirmingId === o.id}
                   className="bg-ink text-stone label-text px-5 py-2.5 rounded-full hover:bg-indigo transition-colors disabled:opacity-50"
                 >
-                  {confirmingId === o.id ? "Confirming…" : "Confirm Delivered"}
+                 {confirmingId === o.id ? "Updating..." : "Confirm Order"}
                 </button>
               </div>
             </div>

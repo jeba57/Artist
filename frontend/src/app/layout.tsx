@@ -3,8 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
+import SiteChrome from "@/components/layout/SiteChrome";
 
 export const metadata: Metadata = {
   title: "Artist — A Living Exhibition of Handmade India",
@@ -26,12 +25,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full flex flex-col bg-stone text-ink font-body">
         <AuthProvider>
           <CartProvider>
-            <WishlistProvider>
-              <Navbar />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </WishlistProvider>
-          </CartProvider>
+    <WishlistProvider>
+      <SiteChrome>{children}</SiteChrome>
+    </WishlistProvider>
+  </CartProvider>
         </AuthProvider>
       </body>
     </html>

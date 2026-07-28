@@ -90,20 +90,55 @@ export const listOrdersForBuyer = async (userId) => {
   return rows;
 };
 
-export const listOrdersForAdmin = async ({ needsConfirmation }) => {
-  const where = needsConfirmation
-    ? `WHERE o.payment_status = 'PAID' AND o.admin_confirmed_at IS NULL`
-    : `WHERE o.payment_status = 'PAID'`;
+
+
+export const listOrdersForAdmin = async ({ statusFilter } = {}) => {
+  const params = [];
+  let where = `WHERE o.payment_status = 'PAID'`;
+  if (statusFilter) {
+    params.push(statusFilter);
+    where += ` AND o.status = $${params.length}`;
+  }
+
   const { rows } = await query(
     `SELECT o.id, o.status, o.payment_status, o.total_amount, o.shipping_address,
             o.created_at, o.admin_confirmed_at,
-            u.name AS buyer_name, u.email AS buyer_email
-     FROM orders o JOIN users u ON u.id = o.user_id
+            u.name AS buyer_name, u.email AS buyer_email,
+            string_agg(DISTINCT a.name, ', ') AS artisan_names,
+            string_agg(DISTINCT p.name || ' x' || oi.quantity, ', ') AS product_summary,
+            SUM(oi.quantity)::int AS total_quantity
+     FROM orders o
+     JOIN users u ON u.id = o.user_id
+     JOIN order_items oi ON oi.order_id = o.id
+     JOIN products p ON p.id = oi.product_id
+     LEFT JOIN artisans a ON a.id = oi.artisan_id
      ${where}
-     ORDER BY o.created_at DESC`
+     GROUP BY o.id, u.name, u.email
+     ORDER BY o.created_at DESC`,
+    params
   );
   return rows;
 };
+
+// The 3-stage workflow an admin walks each paid order through.
+// Each stage only accepts the one valid predecessor status, so a
+// stale/double-clicked button can't skip or rewind a stage.
+const ALLOWED_TRANSITIONS = {
+  CONFIRMED: "PENDING",
+  SHIPPED: "CONFIRMED",
+  DELIVERED: "SHIPPED",
+};
+
+
+
+
+
+
+
+
+
+
+
 
 export const confirmOrderDelivered = async ({ orderId, adminUserId }) => {
   return withTransaction(async (client) => {

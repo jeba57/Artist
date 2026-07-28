@@ -145,7 +145,9 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full hover:bg-stone-deep transition-colors"
               >
                 <User size={18} />
-                <span className="hidden sm:inline label-text">{user ? user.name.split(" ")[0] : "Login"}</span>
+                <span className="hidden sm:inline label-text">{user
+  ? (user.name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "User")
+  : "Login"}</span>
               </button>
 
               {loginOpen && (

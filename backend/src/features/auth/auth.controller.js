@@ -2,6 +2,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { sendSuccess } from "../../utils/ApiResponse.js";
 import * as authService from "./auth.service.js";
 import { ApiError } from "../../utils/ApiError.js";
+import * as authRepository from "./auth.repository.js";
 
 const REFRESH_COOKIE_OPTS = {
   httpOnly: true,
@@ -56,5 +57,13 @@ export const logout = asyncHandler(async (req, res) => {
 });
 
 export const me = asyncHandler(async (req, res) => {
-  sendSuccess(res, { data: { user: req.user } });
+  const user = await authRepository.findUserById(req.user.id);
+
+  if (!user) {
+    throw ApiError.unauthorized("User not found.");
+  }
+
+  sendSuccess(res, {
+    data: { user },
+  });
 });

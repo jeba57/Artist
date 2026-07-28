@@ -1,21 +1,24 @@
 import { Router } from "express";
-import { param } from "express-validator";
+import { param, body } from "express-validator";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { sendSuccess } from "../../utils/ApiResponse.js";
 import { validate } from "../../middlewares/validate.js";
 import { requireAuth, requireAdmin } from "../../middlewares/auth.middleware.js";
 import { ApiError } from "../../utils/ApiError.js";
 import * as ordersRepo from "../orders/orders.repository.js";
+import * as adminRepo from "./admin.repository.js";
 import { sendBuyerOrderConfirmedEmail } from "../../utils/email.js";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
 
+const VALID_STATUSES = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED"];
+
 router.get(
   "/orders",
   asyncHandler(async (req, res) => {
-    const needsConfirmation = req.query.status === "needs_confirmation";
-    const orders = await ordersRepo.listOrdersForAdmin({ needsConfirmation });
+    const statusFilter = VALID_STATUSES.includes(req.query.status) ? req.query.status : undefined;
+    const orders = await ordersRepo.listOrdersForAdmin({ statusFilter });
     sendSuccess(res, { data: orders });
   })
 );
@@ -30,20 +33,30 @@ router.get(
   })
 );
 
-// The core "I verified this arrived" action. Flips the order to
-// DELIVERED and moves every line item's payout from NOT_APPLICABLE
-// to PENDING — i.e. "sellers are now owed this money."
+// The order workflow: PENDING -> CONFIRMED -> SHIPPED -> DELIVERED.
+// Each call advances exactly one stage; the repository rejects
+// anything that isn't the correct next step for the order's current
+// status. Reaching DELIVERED is also what marks each line item's
+// maker payout as PENDING (ready for you to pay out).
 router.post(
-  "/orders/:id/confirm",
-  validate([param("id").notEmpty()]),
+  "/orders/:id/status",
+  validate([param("id").notEmpty(), body("status").isIn(["CONFIRMED", "SHIPPED", "DELIVERED"])]),
   asyncHandler(async (req, res) => {
-    const order = await ordersRepo.confirmOrderDelivered({ orderId: req.params.id, adminUserId: req.user.id });
-    if (!order) throw ApiError.badRequest("Order is already confirmed, or hasn't been paid yet.");
+    const order = await ordersRepo.advanceOrderStatus({
+      orderId: req.params.id,
+      newStatus: req.body.status,
+      adminUserId: req.user.id,
+    });
+    if (!order) {
+      throw ApiError.badRequest("This order isn't in the right state for that action (it may have already moved on).");
+    }
 
-    const fullOrder = await ordersRepo.getOrderWithItems(order.id);
-    sendBuyerOrderConfirmedEmail(fullOrder).catch((err) => console.error("[email] buyer notify failed:", err.message));
+    if (order.status === "DELIVERED") {
+      const fullOrder = await ordersRepo.getOrderWithItems(order.id);
+      sendBuyerOrderConfirmedEmail(fullOrder).catch((err) => console.error("[email] buyer notify failed:", err.message));
+    }
 
-    sendSuccess(res, { message: "Order confirmed. Seller payouts are now marked pending.", data: order });
+    sendSuccess(res, { message: `Order marked as ${order.status.toLowerCase()}.`, data: order });
   })
 );
 
@@ -66,6 +79,22 @@ router.post(
     const updated = await ordersRepo.markPayoutPaid(req.params.orderItemId);
     if (!updated) throw ApiError.badRequest("This payout was already marked paid, or doesn't exist.");
     sendSuccess(res, { message: "Payout marked as paid.", data: updated });
+  })
+);
+
+router.get(
+  "/users",
+  asyncHandler(async (req, res) => {
+    const users = await adminRepo.listUsers();
+    sendSuccess(res, { data: users });
+  })
+);
+
+router.get(
+  "/stats",
+  asyncHandler(async (req, res) => {
+    const stats = await adminRepo.getDashboardStats();
+    sendSuccess(res, { data: stats });
   })
 );
 

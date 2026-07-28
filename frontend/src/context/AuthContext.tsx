@@ -29,9 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const res = await api.get<User>("/auth/me", { token: stored });
-      setUser(res.data);
-      setAccessToken(stored);
+     const res = await api.get<{ user: User }>("/auth/me", { token: stored });
+
+console.log("AUTH /auth/me:", res.data);
+
+setUser(res.data.user);
+setAccessToken(stored);
     } catch {
       localStorage.removeItem(TOKEN_KEY);
     } finally {
@@ -49,10 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const login = async (email: string, password: string) => {
-    const res = await api.post<{ user: User; accessToken: string }>("/auth/login", { email, password });
-    persist(res.data.accessToken, res.data.user);
-  };
+ const login = async (email: string, password: string) => {
+  const res = await api.post<{ user: User; accessToken: string }>("/auth/login", {
+    email,
+    password,
+  });
+
+  console.log("LOGIN RESPONSE:", res.data.user);
+
+  persist(res.data.accessToken, res.data.user);
+};
 
   const register = async (name: string, email: string, password: string) => {
     const res = await api.post<{ user: User; accessToken: string }>("/auth/register", { name, email, password });
