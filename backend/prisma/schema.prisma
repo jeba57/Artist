@@ -12,7 +12,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ------------------------------------------------------------
@@ -60,19 +59,19 @@ model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
-  passwordHash String? // null when signed up via Google
-  googleId     String?  @unique
-  avatarUrl    String?
+  passwordHash String?  @map("password_hash") // null when signed up via Google
+  googleId     String?  @unique @map("google_id")
+  avatarUrl    String?  @map("avatar_url")
   role         Role     @default(BUYER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now())@updatedAt @map("updated_at")
 
-  wishlist     WishlistItem[]
-  cartItems    CartItem[]
-  reviews      Review[]
-  orders       Order[]        @relation("OrderBuyer")
-  confirmedOrders Order[]     @relation("OrderConfirmedBy")
-  recentlyViewed RecentlyViewed[]
+  wishlist        WishlistItem[]
+  cartItems       CartItem[]
+  reviews         Review[]
+  orders          Order[]          @relation("OrderBuyer")
+  confirmedOrders Order[]          @relation("OrderConfirmedBy")
+  recentlyViewed  RecentlyViewed[]
 
   @@map("users")
 }
@@ -82,33 +81,33 @@ model User {
 // ------------------------------------------------------------
 
 model Artisan {
-  id                 String             @id @default(cuid())
-  name               String
-  slug               String             @unique
-  bio                String
-  story              String? // longer "Meet the Makers" narrative
-  avatarUrl          String?
-  coverImageUrl      String?
-  location            String
-  craftSpecialty      String // e.g. "Terracotta Pottery"
-  yearsOfExperience   Int?
-  verified            Boolean            @default(false)
-  verificationStatus  VerificationStatus @default(NOT_APPLICABLE)
-  ratingAvg           Float              @default(0)
-  ratingCount         Int                @default(0)
-  isFeaturedMaker     Boolean            @default(false)
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  bio               String
+  story             String? // longer "Meet the Makers" narrative
+  avatarUrl         String?            @map("avatar_url")
+  coverImageUrl     String?            @map("cover_image_url")
+  location          String
+  craftSpecialty    String             @map("craft_specialty") // e.g. "Terracotta Pottery"
+  yearsOfExperience Int?               @map("years_of_experience")
+  verified          Boolean            @default(false)
+  verificationStatus VerificationStatus @default(NOT_APPLICABLE) @map("verification_status")
+  ratingAvg         Float              @default(0) @map("rating_avg")
+  ratingCount       Int                @default(0) @map("rating_count")
+  isFeaturedMaker   Boolean            @default(false) @map("is_featured_maker")
 
   // Future: seller auth fields (unused in Stage 1)
-  email               String?            @unique
-  passwordHash        String?
-  govIdUrl            String?
-  bankDetailsJson      Json?
+  email             String?            @unique
+  passwordHash      String?            @map("password_hash")
+  govIdUrl          String?            @map("gov_id_url")
+  bankDetailsJson   Json?              @map("bank_details_json")
 
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @default(now())@updatedAt @map("updated_at")
 
-  products           Product[]
-  orderItems         OrderItem[]
+  products          Product[]
+  orderItems        OrderItem[]
 
   @@map("artisans")
 }
@@ -118,14 +117,14 @@ model Artisan {
 // ------------------------------------------------------------
 
 model Category {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
-  description String?
-  imageUrl    String?
-  displayOrder Int       @default(0)
+  id           String    @id @default(cuid())
+  name         String    @unique
+  slug         String    @unique
+  description  String?
+  imageUrl     String?   @map("image_url")
+  displayOrder Int       @default(0) @map("display_order")
 
-  products    Product[]
+  products     Product[]
 
   @@map("categories")
 }
@@ -135,40 +134,40 @@ model Category {
 // ------------------------------------------------------------
 
 model Product {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  shortDescription String
-  story          String   // craft storytelling copy for detail page
-  craftProcess   String[] // ordered steps
-  materials      String[]
-  images         String[] // Cloudinary URLs, first = primary
-  price          Decimal  @db.Decimal(10, 2)
-  discountPrice  Decimal? @db.Decimal(10, 2)
-  currency       String   @default("INR")
-  stock          Int      @default(10)
-  location       String
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  shortDescription String   @map("short_description")
+  story            String   // craft storytelling copy for detail page
+  craftProcess     String[] @map("craft_process") // ordered steps
+  materials        String[]
+  images           String[] // Cloudinary URLs, first = primary
+  price            Decimal  @db.Decimal(10, 2)
+  discountPrice    Decimal? @map("discount_price") @db.Decimal(10, 2)
+  currency         String   @default("INR")
+  stock            Int      @default(10)
+  location         String
 
-  ratingAvg      Float    @default(0)
-  ratingCount    Int      @default(0)
+  ratingAvg        Float    @default(0) @map("rating_avg")
+  ratingCount      Int      @default(0) @map("rating_count")
 
-  isFeatured     Boolean  @default(false) // Featured Collection
-  isEditorsPick  Boolean  @default(false) // Editor's Picks
-  isTrending     Boolean  @default(false) // Trending Products (seed flag; live trending computed via Redis)
+  isFeatured       Boolean  @default(false) @map("is_featured") // Featured Collection
+  isEditorsPick    Boolean  @default(false) @map("is_editors_pick") // Editor's Picks
+  isTrending       Boolean  @default(false) @map("is_trending") // Trending Products (seed flag; live trending computed via Redis)
 
-  categoryId     String
-  category       Category @relation(fields: [categoryId], references: [id])
+  categoryId       String   @map("category_id")
+  category         Category @relation(fields: [categoryId], references: [id])
 
-  artisanId      String
-  artisan        Artisan  @relation(fields: [artisanId], references: [id])
+  artisanId        String   @map("artisan_id")
+  artisan          Artisan  @relation(fields: [artisanId], references: [id])
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now())@updatedAt @map("updated_at")
 
-  reviews        Review[]
-  wishlistedBy   WishlistItem[]
-  cartOf         CartItem[]
-  orderItems     OrderItem[]
+  reviews          Review[]
+  wishlistedBy     WishlistItem[]
+  cartOf           CartItem[]
+  orderItems       OrderItem[]
   recentlyViewedBy RecentlyViewed[]
 
   @@index([categoryId])
@@ -187,12 +186,12 @@ model Review {
   id        String   @id @default(cuid())
   rating    Int      // 1-5
   comment   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
-  userId    String
+  userId    String @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String
+  productId String @map("product_id")
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId]) // one review per buyer per product
@@ -207,13 +206,13 @@ model Review {
 model CartItem {
   id        String   @id @default(cuid())
   quantity  Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now())@updatedAt @map("updated_at")
 
-  userId    String
+  userId    String @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String
+  productId String @map("product_id")
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
@@ -226,12 +225,12 @@ model CartItem {
 
 model WishlistItem {
   id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
-  userId    String
+  userId    String @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String
+  productId String @map("product_id")
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
@@ -244,12 +243,12 @@ model WishlistItem {
 
 model RecentlyViewed {
   id        String   @id @default(cuid())
-  viewedAt  DateTime @default(now())
+  viewedAt  DateTime @default(now()) @map("viewed_at")
 
-  userId    String
+  userId    String @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String
+  productId String @map("product_id")
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
@@ -257,31 +256,31 @@ model RecentlyViewed {
 }
 
 // ------------------------------------------------------------
-// ORDERS (minimal, supports "Buy Now" / checkout stub)
+// ORDERS
 // ------------------------------------------------------------
 
 model Order {
   id            String        @id @default(cuid())
   status        OrderStatus   @default(PENDING)
-  totalAmount   Decimal       @db.Decimal(10, 2)
+  totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
 
   // Payment (Razorpay)
-  razorpayOrderId   String?       @unique
-  razorpayPaymentId String?
-  paymentStatus     PaymentStatus @default(PENDING)
+  razorpayOrderId   String?       @unique @map("razorpay_order_id")
+  razorpayPaymentId String?       @map("razorpay_payment_id")
+  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
 
   // Delivery
-  shippingAddress Json?
+  shippingAddress Json?         @map("shipping_address")
 
   // Admin confirms delivery happened before sellers get marked payable
-  adminConfirmedAt DateTime?
-  adminConfirmedBy String?
-  confirmedByUser  User?         @relation("OrderConfirmedBy", fields: [adminConfirmedBy], references: [id])
+  adminConfirmedAt DateTime?    @map("admin_confirmed_at")
+  adminConfirmedBy String?      @map("admin_confirmed_by")
+  confirmedByUser  User?        @relation("OrderConfirmedBy", fields: [adminConfirmedBy], references: [id])
 
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now())@updatedAt @map("updated_at")
 
-  userId        String
+  userId        String        @map("user_id")
   user          User          @relation("OrderBuyer", fields: [userId], references: [id])
 
   items         OrderItem[]
@@ -290,24 +289,24 @@ model Order {
 }
 
 model OrderItem {
-  id         String       @id @default(cuid())
-  quantity   Int
-  priceEach  Decimal      @db.Decimal(10, 2)
+  id             String       @id @default(cuid())
+  quantity       Int
+  priceEach      Decimal      @map("price_each") @db.Decimal(10, 2)
 
   // Commission split, locked in at checkout time
-  platformFee   Decimal      @default(0) @db.Decimal(10, 2)
-  sellerAmount  Decimal      @default(0) @db.Decimal(10, 2)
-  payoutStatus  PayoutStatus @default(NOT_APPLICABLE)
-  payoutMarkedAt DateTime?
+  platformFee    Decimal      @default(0) @map("platform_fee") @db.Decimal(10, 2)
+  sellerAmount   Decimal      @default(0) @map("seller_amount") @db.Decimal(10, 2)
+  payoutStatus   PayoutStatus @default(NOT_APPLICABLE) @map("payout_status")
+  payoutMarkedAt DateTime?    @map("payout_marked_at")
 
-  orderId    String
-  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String  @map("order_id")
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  productId  String
-  product    Product      @relation(fields: [productId], references: [id])
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
 
-  artisanId  String?
-  artisan    Artisan?     @relation(fields: [artisanId], references: [id])
+  artisanId String? @map("artisan_id")
+  artisan   Artisan? @relation(fields: [artisanId], references: [id])
 
   @@map("order_items")
 }

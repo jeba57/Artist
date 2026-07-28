@@ -30,7 +30,13 @@ const CATEGORIES = [
 ];
 
 const ARTISANS = [
-  { name: "Meera Devi", specialty: "Terracotta Pottery", location: "Khurja, Uttar Pradesh", years: 22, bio: "Fourth-generation potter continuing her family's terracotta legacy from the kilns of Khurja." },
+  {
+  name: "Jeba Khatun",
+  specialty: "Terracotta Art & Home Decor",
+  location: "Kolkata, West Bengal",
+  years:1,
+  bio: "Independent terracotta artist creating handcrafted home décor inspired by Bengal's rich artistic heritage."
+},
   { name: "Ravi Prajapati", specialty: "Blue Pottery", location: "Jaipur, Rajasthan", years: 15, bio: "Self-taught blue pottery artist blending Persian technique with Rajasthani motifs." },
   { name: "Lakshmi Bai", specialty: "Crochet Textiles", location: "Kannur, Kerala", years: 18, bio: "Leads a women's crochet collective producing heirloom-quality textiles." },
   { name: "Suresh Mallick", specialty: "Bamboo Weaving", location: "Cooch Behar, West Bengal", years: 30, bio: "Master bamboo weaver trained under his grandfather in traditional Bengal basketry." },
@@ -64,7 +70,7 @@ const PRODUCTS = [
   { name: "Coconut Soy Candle — Sandalwood", category: "Candles", artisan: 9, price: 649, materials: ["Coconut-soy wax", "Cotton wick", "Sandalwood oil"], story: "Hand-poured in small batches using a clean-burning coconut-soy blend and natural sandalwood oil." },
   { name: "Botanical Soy Candle Trio", category: "Candles", artisan: 9, price: 1199, materials: ["Soy wax", "Dried botanicals"], story: "Three hand-poured candles layered with real dried flowers, scented with essential oils." },
   { name: "Handwoven Jute Table Runner", category: "Home Decor", artisan: 3, price: 899, materials: ["Jute", "Cotton"], story: "Woven on a traditional pit loom, this runner brings texture to any table setting." },
-  { name: "Terracotta Wall Plates (Set of 3)", category: "Home Decor", artisan: 0, price: 1399, materials: ["Terracotta clay", "Natural pigment"], story: "Hand-painted decorative plates meant for wall display, inspired by folk pottery traditions." },
+  { name: "Terracotta Wall Plates (Set of 3)", category: "Home Decor", artisan: 0, price: 1980, materials: ["Terracotta clay", "Natural pigment"], story: "Hand-painted decorative plates meant for wall display, inspired by folk pottery traditions." },
 ];
 
 const CRAFT_PROCESS = [
@@ -117,7 +123,14 @@ async function main() {
   console.log("Seeding products...");
   for (const [i, p] of PRODUCTS.entries()) {
     const pid = id("prod_");
-    const images = [img(p.name, i), img(p.category + " closeup", i + 500), img(p.category + " detail", i + 900)];
+    const images =
+  p.name === "Terracotta Wall Plates (Set of 3)"
+    ? ["/products/terracotta-wall-plates-set-of-3.png"]
+    : [
+        img(p.name, i),
+        img(p.category + " closeup", i + 500),
+        img(p.category + " detail", i + 900),
+      ];
     await pool.query(
       `INSERT INTO products (id, name, slug, short_description, story, craft_process, materials, images,
                               price, discount_price, currency, stock, location, rating_avg, rating_count,

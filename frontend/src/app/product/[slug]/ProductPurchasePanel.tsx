@@ -18,6 +18,9 @@ export default function ProductPurchasePanel({ product }: { product: ProductDeta
   const wished = ids.has(product.id);
   const price = product.discountPrice ?? product.price;
 
+
+  
+
   const handleAdd = async () => {
     setStatus("adding");
     try {
