@@ -8,14 +8,14 @@ import { ArrowRight } from "lucide-react";
 export default function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-stone-line">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-14 pb-0 sm:pt-20 grid lg:grid-cols-12 gap-10 items-end">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 py-12 grid md:grid-cols-12 gap-12 items-center min-h-[calc(100vh-90px)]">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="lg:col-span-5 pb-14 sm:pb-20"
+          className="md:col-span-5"
         >
-          <p className="label-text text-terracotta">Stage 01 — A Living Exhibition</p>
+          <p className="label-text text-terracotta">Handcrafted by Indian Artisans</p>
           <h1 className="mt-5 font-display text-[2.6rem] sm:text-6xl leading-[1.04] text-ink">
             Handmade,
             <br />
@@ -30,7 +30,7 @@ export default function Hero() {
               href="/discover"
               className="inline-flex items-center gap-2 bg-ink text-stone px-6 py-3.5 rounded-full label-text hover:bg-indigo transition-colors"
             >
-              Enter the Exhibition <ArrowRight size={14} />
+              Enter the Exhibition <ArrowRight size={16} />
             </Link>
             <Link href="#makers" className="label-text text-ink-soft hover:text-terracotta transition-colors">
               Meet the Makers
@@ -42,36 +42,36 @@ export default function Hero() {
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, ease: "easeOut" }}
-          className="lg:col-span-7 relative"
+          className="md:col-span-7 relative"
         >
           <div className="grid grid-cols-5 gap-3 sm:gap-4">
-            <div className="col-span-3 relative aspect-[3/4] rounded-t-[2.5rem] overflow-hidden">
+            <div className="relative h-[250px] rounded-[28px] overflow-hidden bg-white shadow-sm border border-stone-200">
               <Image
-                src="https://source.unsplash.com/900x1200/?pottery,handmade,craft&sig=hero1"
+                src="https://res.cloudinary.com/duu8hc93r/image/upload/v1785257845/4e27e088-7f98-4854-9211-fb1de4285dac_zs5kmm.jpg"
                 alt="Hand-thrown terracotta pottery"
                 fill
                 priority
                 sizes="45vw"
-                className="object-cover"
+                className="object-cover bg-[#F7F1E5] p-4"
               />
             </div>
             <div className="col-span-2 flex flex-col gap-3 sm:gap-4">
-              <div className="relative aspect-square rounded-tr-[2rem] overflow-hidden">
+              <div className="relative h-[250px] rounded-tr-[2rem] overflow-hidden">
                 <Image
-                  src="https://source.unsplash.com/600x600/?embroidery,textile,india&sig=hero2"
+                  src="https://res.cloudinary.com/duu8hc93r/image/upload/v1785257865/b609a1ec-c785-4b4b-aeac-1c1d8c1eeb2d_wm6xql.jpg"
                   alt="Hand embroidery detail"
                   fill
                   sizes="20vw"
-                  className="object-cover"
+                  className="object-cover bg-[#F7F1E5] p-4"
                 />
               </div>
-              <div className="relative aspect-[4/5] overflow-hidden rounded-br-[1.5rem]">
+              <div className="relative h-[250px] overflow-hidden rounded-br-[1.5rem]">
                 <Image
-                  src="https://source.unsplash.com/600x750/?jewelry,silver,handcraft&sig=hero3"
+                  src="https://res.cloudinary.com/duu8hc93r/image/upload/v1785257877/98cc00eb-f9ff-4aa4-a5e7-5298d8159507_s02k0c.jpg"
                   alt="Handcrafted silver jewellery"
                   fill
                   sizes="20vw"
-                  className="object-cover"
+                  className="object-cover bg-[#F7F1E5] p-4"
                 />
               </div>
             </div>
