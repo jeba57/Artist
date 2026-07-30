@@ -14,7 +14,7 @@ const LANGUAGES = ["EN", "HI", "BN"];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-const { seller, logout: sellerLogout } = useSellerAuth();
+const { seller, logoutSeller: sellerLogout } = useSellerAuth();
   const { cart } = useCart();
   const { items: wishlistItems } = useWishlist();
   const router = useRouter();

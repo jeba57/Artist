@@ -92,7 +92,7 @@ function RejectedView({
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append("bio", bio);
+      formData.append("bio", bio ?? "");
       await api.postForm("/seller/auth/resubmit", formData, { token: accessToken });
       onResubmitted();
     } catch (err) {
@@ -110,7 +110,7 @@ function RejectedView({
       <form onSubmit={resubmit} className="mt-5">
         <label className="label-text text-ink-soft/60 block mb-2">Update your shop description</label>
         <textarea
-          value={bio}
+          value={bio ??""}
           onChange={(e) => setBio(e.target.value)}
           rows={4}
           className="w-full bg-white/60 rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-indigo"

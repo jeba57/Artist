@@ -274,27 +274,27 @@ export interface SellerAuthResponse {
 export interface SellerProfile {
   id: string;
   name: string;
+  slug: string;
+
   email: string;
   phone: string;
-
   owner_name: string;
-  bio: string;
-  location: string;
-  craft_specialty: string;
+
+  bio: string | null;
+  location: string | null;
+  craft_specialty: string | null;
   years_of_experience: number | null;
 
-  verification_status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
-  verification_submitted_at: string | null;
-  rejection_reason: string | null;
-
   avatar_url: string | null;
+
+  gstin: string | null;
+  pan: string | null;
 
   gov_id_url: string | null;
   pan_card_url: string | null;
   gst_certificate_url: string | null;
   bank_proof_url: string | null;
 
-  // Add these
   bank_details_json: {
     accountHolderName: string;
     accountNumber: string;
@@ -311,7 +311,15 @@ export interface SellerProfile {
     phone: string;
   } | null;
 
+  verification_status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  verification_submitted_at: string | null;
+  rejection_reason: string | null;
+
+  verified_at: string | null;
+  verified_by: string | null;
+
   created_at: string;
+  updated_at: string;
 }
 
 export interface SellerVerification {
