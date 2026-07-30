@@ -289,6 +289,11 @@ export interface SellerProfile {
 
   avatar_url: string | null;
 
+  gov_id_url: string | null;
+  pan_card_url: string | null;
+  gst_certificate_url: string | null;
+  bank_proof_url: string | null;
+
   created_at: string;
 }
 
