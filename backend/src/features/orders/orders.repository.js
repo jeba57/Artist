@@ -140,25 +140,38 @@ const ALLOWED_TRANSITIONS = {
 
 
 
-export const confirmOrderDelivered = async ({ orderId, adminUserId }) => {
+export const advanceOrderStatus = async ({ orderId, newStatus, adminUserId }) => {
+  const fromStatus = ALLOWED_TRANSITIONS[newStatus];
+  if (!fromStatus) throw new Error(`Unsupported order status transition to "${newStatus}".`);
+
   return withTransaction(async (client) => {
+    const isDelivering = newStatus === "DELIVERED";
+
     const { rows } = await client.query(
-      `UPDATE orders SET status = 'DELIVERED', admin_confirmed_at = now(), admin_confirmed_by = $2, updated_at = now()
-       WHERE id = $1 AND payment_status = 'PAID' AND admin_confirmed_at IS NULL
+      `UPDATE orders
+       SET status = $3,
+           updated_at = now()
+           ${isDelivering ? ", admin_confirmed_at = now(), admin_confirmed_by = $4" : ""}
+       WHERE id = $1 AND payment_status = 'PAID' AND status = $2
        RETURNING *`,
-      [orderId, adminUserId]
+      isDelivering ? [orderId, fromStatus, newStatus, adminUserId] : [orderId, fromStatus, newStatus]
     );
     if (!rows[0]) return null;
 
-    await client.query(
-      `UPDATE order_items SET payout_status = 'PENDING'
-       WHERE order_id = $1 AND payout_status = 'NOT_APPLICABLE'`,
-      [orderId]
-    );
+    // Delivery is the moment a maker's payout becomes collectible —
+    // matches the existing payout-tracking behaviour exactly.
+    if (isDelivering) {
+      await client.query(
+        `UPDATE order_items SET payout_status = 'PENDING'
+         WHERE order_id = $1 AND payout_status = 'NOT_APPLICABLE'`,
+        [orderId]
+      );
+    }
 
     return rows[0];
   });
 };
+
 
 export const listPendingPayouts = async () => {
   const { rows } = await query(

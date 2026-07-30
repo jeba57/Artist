@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiClientError } from "@/lib/api";
@@ -14,7 +14,7 @@ export default function AdminOrdersPage() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+ const load = useCallback(() => {
   if (!accessToken) return;
 
   setLoading(true);
@@ -23,12 +23,22 @@ export default function AdminOrdersPage() {
     .get<AdminOrderSummary[]>("/admin/orders?statusFilter=PENDING", {
       token: accessToken,
     })
-      .then((res) => setOrders(res.data))
-      .catch((err) => setError(err instanceof ApiClientError ? err.message : "Failed to load orders."))
-      .finally(() => setLoading(false));
-  };
+    .then((res) => setOrders(res.data))
+    .catch((err) =>
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : "Failed to load orders."
+      )
+    )
+    .finally(() => setLoading(false));
+}, [accessToken]);
 
-  useEffect(load, [accessToken]);
+
+
+  useEffect(() => {
+  load();
+}, [load]);
 
   const advanceOrder = async (orderId: string) => {
   if (!accessToken) return;
