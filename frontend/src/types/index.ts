@@ -294,6 +294,23 @@ export interface SellerProfile {
   gst_certificate_url: string | null;
   bank_proof_url: string | null;
 
+  // Add these
+  bank_details_json: {
+    accountHolderName: string;
+    accountNumber: string;
+    ifsc: string;
+    bankName: string;
+  } | null;
+
+  pickup_address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    phone: string;
+  } | null;
+
   created_at: string;
 }
 
