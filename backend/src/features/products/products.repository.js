@@ -147,3 +147,33 @@ export const recalculateProductRating = async (productId, client = { query: quer
     [productId]
   );
 };
+
+
+export const createProductForArtisan = async ({
+  artisanId, categoryId, name, slug, shortDescription, story, craftProcess,
+  materials, images, price, discountPrice, stock, location,
+}) => {
+  const id = generateId("prod_");
+  const { rows } = await query(
+    `INSERT INTO products (
+       id, name, slug, short_description, story, craft_process, materials, images,
+       price, discount_price, stock, location, category_id, artisan_id
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     RETURNING *`,
+    [id, name, slug, shortDescription, story, craftProcess, materials, images,
+     price, discountPrice || null, stock, location, categoryId, artisanId]
+  );
+  return rows[0];
+};
+
+export const listProductsForArtisan = async (artisanId) => {
+  const { rows } = await query(
+    `SELECT p.*, c.name AS category_name
+     FROM products p JOIN categories c ON c.id = p.category_id
+     WHERE p.artisan_id = $1
+     ORDER BY p.created_at DESC`,
+    [artisanId]
+  );
+  return rows;
+};
+

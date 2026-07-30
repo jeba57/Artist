@@ -7,6 +7,8 @@ import cookieParser from "cookie-parser";
 import "dotenv/config";
 
 import authRoutes from "./features/auth/auth.routes.js";
+import sellerAuthRoutes from "./features/seller/seller.routes.js";
+import sellerProductsRoutes from "./features/seller/seller.products.routes.js";
 import productsRoutes from "./features/products/products.routes.js";
 import categoriesRoutes from "./features/categories/categories.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
@@ -40,6 +42,8 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/seller/auth", sellerAuthRoutes);
+app.use("/api/seller/products", sellerProductsRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/cart", cartRoutes);

@@ -98,4 +98,51 @@ router.get(
   })
 );
 
+
+
+
+
+router.get(
+  "/sellers",
+  asyncHandler(async (req, res) => {
+    const validStatuses = ["PENDING", "APPROVED", "REJECTED"];
+    const statusFilter = validStatuses.includes(req.query.status) ? req.query.status : undefined;
+    const sellers = await adminRepo.listSellerApplications({ statusFilter });
+    sendSuccess(res, { data: sellers });
+  })
+);
+
+router.get(
+  "/sellers/:id",
+  validate([param("id").notEmpty()]),
+  asyncHandler(async (req, res) => {
+    const seller = await adminRepo.getSellerApplication(req.params.id);
+    if (!seller) throw ApiError.notFound("Seller application not found.");
+    sendSuccess(res, { data: seller });
+  })
+);
+
+router.post(
+  "/sellers/:id/approve",
+  validate([param("id").notEmpty()]),
+  asyncHandler(async (req, res) => {
+    const seller = await adminRepo.approveSellerApplication(req.params.id, req.user.id);
+    if (!seller) throw ApiError.badRequest("This seller is already approved, or doesn't exist.");
+    sendSuccess(res, { message: `${seller.name} is now a verified seller.`, data: seller });
+  })
+);
+
+router.post(
+  "/sellers/:id/reject",
+  validate([param("id").notEmpty(), body("reason").trim().isLength({ min: 5, max: 500 }).withMessage("Please give a reason (5-500 characters) so the seller knows what to fix.")]),
+  asyncHandler(async (req, res) => {
+    const seller = await adminRepo.rejectSellerApplication(req.params.id, req.user.id, req.body.reason);
+    if (!seller) throw ApiError.badRequest("This seller is already approved, so it can't be rejected.");
+    sendSuccess(res, { message: `${seller.name}'s application was rejected.`, data: seller });
+  })
+);
+
+
+
+
 export default router;

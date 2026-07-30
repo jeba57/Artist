@@ -248,3 +248,55 @@ export interface AdminStats {
   total_products: number;
   total_users: number;
 }
+
+// ===================== SELLER TYPES =====================
+
+export type SellerStatus =
+  | "PENDING"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED";
+
+export interface Seller {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  businessName: string;
+  status: SellerStatus;
+}
+
+export interface SellerAuthResponse {
+  seller: Seller;
+  accessToken: string;
+}
+
+export interface SellerProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+
+  owner_name: string;
+  bio: string;
+  location: string;
+  craft_specialty: string;
+  years_of_experience: number | null;
+
+  verification_status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  verification_submitted_at: string | null;
+  rejection_reason: string | null;
+
+  avatar_url: string | null;
+
+  created_at: string;
+}
+
+export interface SellerVerification {
+  id: string;
+  sellerId: string;
+  status: SellerStatus;
+  rejectionReason?: string | null;
+  submittedAt: string;
+  verifiedAt?: string | null;
+}

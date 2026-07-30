@@ -4,6 +4,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import SiteChrome from "@/components/layout/SiteChrome";
+import { SellerAuthProvider } from "@/context/SellerAuthContext";
 
 export const metadata: Metadata = {
   title: "Artist — A Living Exhibition of Handmade India",
@@ -24,12 +25,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-full flex flex-col bg-stone text-ink font-body">
         <AuthProvider>
-          <CartProvider>
-    <WishlistProvider>
-      <SiteChrome>{children}</SiteChrome>
-    </WishlistProvider>
-  </CartProvider>
-        </AuthProvider>
+  <SellerAuthProvider>
+    <CartProvider>
+      <WishlistProvider>
+        <SiteChrome>{children}</SiteChrome>
+      </WishlistProvider>
+    </CartProvider>
+  </SellerAuthProvider>
+</AuthProvider>
       </body>
     </html>
   );

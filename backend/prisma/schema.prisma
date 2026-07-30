@@ -33,9 +33,14 @@ enum VerificationStatus {
 enum OrderStatus {
   PENDING
   CONFIRMED
+  READY_FOR_PICKUP
+  PICKED_UP
+  IN_TRANSIT
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
+  RETURNED
 }
 
 enum PaymentStatus {
@@ -64,14 +69,15 @@ model User {
   avatarUrl    String?  @map("avatar_url")
   role         Role     @default(BUYER)
   createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now())@updatedAt @map("updated_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  wishlist        WishlistItem[]
-  cartItems       CartItem[]
-  reviews         Review[]
-  orders          Order[]          @relation("OrderBuyer")
-  confirmedOrders Order[]          @relation("OrderConfirmedBy")
-  recentlyViewed  RecentlyViewed[]
+  wishlist         WishlistItem[]
+  cartItems        CartItem[]
+  reviews          Review[]
+  orders           Order[]          @relation("OrderBuyer")
+  confirmedOrders  Order[]          @relation("OrderConfirmedBy")
+  verifiedArtisans Artisan[]        @relation("ArtisanVerifiedBy")
+  recentlyViewed   RecentlyViewed[]
 
   @@map("users")
 }
@@ -81,33 +87,51 @@ model User {
 // ------------------------------------------------------------
 
 model Artisan {
-  id                String             @id @default(cuid())
-  name              String
-  slug              String             @unique
-  bio               String
-  story             String? // longer "Meet the Makers" narrative
-  avatarUrl         String?            @map("avatar_url")
-  coverImageUrl     String?            @map("cover_image_url")
-  location          String
-  craftSpecialty    String             @map("craft_specialty") // e.g. "Terracotta Pottery"
-  yearsOfExperience Int?               @map("years_of_experience")
-  verified          Boolean            @default(false)
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  bio                String
+  story              String? // longer "Meet the Makers" narrative
+  avatarUrl          String?            @map("avatar_url")
+  coverImageUrl      String?            @map("cover_image_url")
+  location           String
+  craftSpecialty     String             @map("craft_specialty") // e.g. "Terracotta Pottery"
+  yearsOfExperience  Int?               @map("years_of_experience")
+  verified           Boolean            @default(false)
   verificationStatus VerificationStatus @default(NOT_APPLICABLE) @map("verification_status")
-  ratingAvg         Float              @default(0) @map("rating_avg")
-  ratingCount       Int                @default(0) @map("rating_count")
-  isFeaturedMaker   Boolean            @default(false) @map("is_featured_maker")
+  ratingAvg          Float              @default(0) @map("rating_avg")
+  ratingCount        Int                @default(0) @map("rating_count")
+  isFeaturedMaker    Boolean            @default(false) @map("is_featured_maker")
 
-  // Future: seller auth fields (unused in Stage 1)
-  email             String?            @unique
-  passwordHash      String?            @map("password_hash")
-  govIdUrl          String?            @map("gov_id_url")
-  bankDetailsJson   Json?              @map("bank_details_json")
+  // --- Business / compliance details ---
+  ownerName         String? @map("owner_name")
+  phone             String?
+  gstin             String? // optional — not every handmade seller is GST-registered
+  pan               String?
+  panCardUrl        String? @map("pan_card_url")
+  gstCertificateUrl String? @map("gst_certificate_url")
+  govIdUrl          String? @map("gov_id_url")
+  bankProofUrl      String? @map("bank_proof_url") // cancelled cheque / passbook photo
+  bankDetailsJson   Json?   @map("bank_details_json") // { accountHolderName, accountNumber, ifsc, bankName }
 
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @default(now())@updatedAt @map("updated_at")
+  // Structured pickup address — kept separate from the display-only
+  // `location` string specifically so it can be handed to a shipping
+  // provider (Shiprocket pickup-location API expects exactly this
+  // shape) without reparsing free text later.
+  pickupAddress Json? @map("pickup_address") // { line1, line2, city, state, pincode, phone }
 
-  products          Product[]
-  orderItems        OrderItem[]
+  // --- Verification audit trail (mirrors Order.adminConfirmedAt/By) ---
+  verificationSubmittedAt DateTime? @map("verification_submitted_at")
+  verifiedAt              DateTime? @map("verified_at")
+  verifiedBy              String?   @map("verified_by")
+  verifiedByUser          User?     @relation("ArtisanVerifiedBy", fields: [verifiedBy], references: [id])
+  rejectionReason         String?   @map("rejection_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  products   Product[]
+  orderItems OrderItem[]
 
   @@map("artisans")
 }
@@ -117,14 +141,14 @@ model Artisan {
 // ------------------------------------------------------------
 
 model Category {
-  id           String    @id @default(cuid())
-  name         String    @unique
-  slug         String    @unique
+  id           String  @id @default(cuid())
+  name         String  @unique
+  slug         String  @unique
   description  String?
-  imageUrl     String?   @map("image_url")
-  displayOrder Int       @default(0) @map("display_order")
+  imageUrl     String? @map("image_url")
+  displayOrder Int     @default(0) @map("display_order")
 
-  products     Product[]
+  products Product[]
 
   @@map("categories")
 }
@@ -138,7 +162,7 @@ model Product {
   name             String
   slug             String   @unique
   shortDescription String   @map("short_description")
-  story            String   // craft storytelling copy for detail page
+  story            String // craft storytelling copy for detail page
   craftProcess     String[] @map("craft_process") // ordered steps
   materials        String[]
   images           String[] // Cloudinary URLs, first = primary
@@ -148,21 +172,21 @@ model Product {
   stock            Int      @default(10)
   location         String
 
-  ratingAvg        Float    @default(0) @map("rating_avg")
-  ratingCount      Int      @default(0) @map("rating_count")
+  ratingAvg   Float @default(0) @map("rating_avg")
+  ratingCount Int   @default(0) @map("rating_count")
 
-  isFeatured       Boolean  @default(false) @map("is_featured") // Featured Collection
-  isEditorsPick    Boolean  @default(false) @map("is_editors_pick") // Editor's Picks
-  isTrending       Boolean  @default(false) @map("is_trending") // Trending Products (seed flag; live trending computed via Redis)
+  isFeatured    Boolean @default(false) @map("is_featured") // Featured Collection
+  isEditorsPick Boolean @default(false) @map("is_editors_pick") // Editor's Picks
+  isTrending    Boolean @default(false) @map("is_trending") // Trending Products (seed flag; live trending computed via Redis)
 
-  categoryId       String   @map("category_id")
-  category         Category @relation(fields: [categoryId], references: [id])
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id])
 
-  artisanId        String   @map("artisan_id")
-  artisan          Artisan  @relation(fields: [artisanId], references: [id])
+  artisanId String  @map("artisan_id")
+  artisan   Artisan @relation(fields: [artisanId], references: [id])
 
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @default(now())@updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   reviews          Review[]
   wishlistedBy     WishlistItem[]
@@ -184,15 +208,15 @@ model Product {
 
 model Review {
   id        String   @id @default(cuid())
-  rating    Int      // 1-5
+  rating    Int // 1-5
   comment   String?
   createdAt DateTime @default(now()) @map("created_at")
 
-  userId    String @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId]) // one review per buyer per product
   @@index([productId])
@@ -207,13 +231,13 @@ model CartItem {
   id        String   @id @default(cuid())
   quantity  Int      @default(1)
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now())@updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  userId    String @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@map("cart_items")
@@ -227,11 +251,11 @@ model WishlistItem {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now()) @map("created_at")
 
-  userId    String @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@map("wishlist_items")
@@ -242,14 +266,14 @@ model WishlistItem {
 // ------------------------------------------------------------
 
 model RecentlyViewed {
-  id        String   @id @default(cuid())
-  viewedAt  DateTime @default(now()) @map("viewed_at")
+  id       String   @id @default(cuid())
+  viewedAt DateTime @default(now()) @map("viewed_at")
 
-  userId    String @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  productId String @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@map("recently_viewed")
@@ -260,9 +284,9 @@ model RecentlyViewed {
 // ------------------------------------------------------------
 
 model Order {
-  id            String        @id @default(cuid())
-  status        OrderStatus   @default(PENDING)
-  totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
+  id          String      @id @default(cuid())
+  status      OrderStatus @default(PENDING)
+  totalAmount Decimal     @map("total_amount") @db.Decimal(10, 2)
 
   // Payment (Razorpay)
   razorpayOrderId   String?       @unique @map("razorpay_order_id")
@@ -270,28 +294,28 @@ model Order {
   paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
 
   // Delivery
-  shippingAddress Json?         @map("shipping_address")
+  shippingAddress Json? @map("shipping_address")
 
   // Admin confirms delivery happened before sellers get marked payable
-  adminConfirmedAt DateTime?    @map("admin_confirmed_at")
-  adminConfirmedBy String?      @map("admin_confirmed_by")
-  confirmedByUser  User?        @relation("OrderConfirmedBy", fields: [adminConfirmedBy], references: [id])
+  adminConfirmedAt DateTime? @map("admin_confirmed_at")
+  adminConfirmedBy String?   @map("admin_confirmed_by")
+  confirmedByUser  User?     @relation("OrderConfirmedBy", fields: [adminConfirmedBy], references: [id])
 
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @default(now())@updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  userId        String        @map("user_id")
-  user          User          @relation("OrderBuyer", fields: [userId], references: [id])
+  userId String @map("user_id")
+  user   User   @relation("OrderBuyer", fields: [userId], references: [id])
 
-  items         OrderItem[]
+  items OrderItem[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  id             String       @id @default(cuid())
-  quantity       Int
-  priceEach      Decimal      @map("price_each") @db.Decimal(10, 2)
+  id        String  @id @default(cuid())
+  quantity  Int
+  priceEach Decimal @map("price_each") @db.Decimal(10, 2)
 
   // Commission split, locked in at checkout time
   platformFee    Decimal      @default(0) @map("platform_fee") @db.Decimal(10, 2)
@@ -299,13 +323,13 @@ model OrderItem {
   payoutStatus   PayoutStatus @default(NOT_APPLICABLE) @map("payout_status")
   payoutMarkedAt DateTime?    @map("payout_marked_at")
 
-  orderId   String  @map("order_id")
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String @map("order_id")
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   productId String  @map("product_id")
   product   Product @relation(fields: [productId], references: [id])
 
-  artisanId String? @map("artisan_id")
+  artisanId String?  @map("artisan_id")
   artisan   Artisan? @relation(fields: [artisanId], references: [id])
 
   @@map("order_items")

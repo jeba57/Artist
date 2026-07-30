@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search, Heart, ShoppingBag, ChevronDown, User, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useSellerAuth } from "@/context/SellerAuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { cx } from "@/lib/format";
@@ -13,6 +14,7 @@ const LANGUAGES = ["EN", "HI", "BN"];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+const { seller, logout: sellerLogout } = useSellerAuth();
   const { cart } = useCart();
   const { items: wishlistItems } = useWishlist();
   const router = useRouter();
@@ -145,46 +147,77 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full hover:bg-stone-deep transition-colors"
               >
                 <User size={18} />
-                <span className="hidden sm:inline label-text">{user
-  ? (user.name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "User")
-  : "Login"}</span>
+                <span className="hidden sm:inline label-text">{seller
+  ? seller.name.split(" ")[0]
+  : user
+    ? (user.name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "User")
+    : "Login"}</span>
               </button>
 
               {loginOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-stone border border-stone-line rounded-2xl shadow-xl overflow-hidden py-1.5">
-                  {user ? (
+                  {seller ? (
                     <>
-                      <div className="px-4 py-2.5 border-b border-stone-line">
-                        <p className="text-sm font-medium">{user.name}</p>
-                        <p className="text-xs text-ink-soft/70">{user.email}</p>
-                      </div>
-                      <Link
-                        href="/orders"
-                        onClick={() => setLoginOpen(false)}
-                        className="block px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
-                      >
-                        My Orders
-                      </Link>
-                      {user.role === "ADMIN" && (
-                        <Link
-                          href="/admin/orders"
-                          onClick={() => setLoginOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-indigo hover:bg-stone-deep transition-colors"
-                        >
-                          Admin Dashboard
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => {
-                          logout();
-                          setLoginOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
-                      >
-                        <LogOut size={15} /> Log out
-                      </button>
-                    </>
-                  ) : (
+  <div className="px-4 py-2.5 border-b border-stone-line">
+    <p className="text-sm font-medium">{seller.name}</p>
+    <p className="text-xs text-ink-soft/70">{seller.email}</p>
+  </div>
+
+  <Link
+    href="/seller"
+    onClick={() => setLoginOpen(false)}
+    className="block px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
+  >
+    Seller Dashboard
+  </Link>
+
+  <button
+    onClick={() => {
+      sellerLogout();
+      setLoginOpen(false);
+    }}
+    className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
+  >
+    <LogOut size={15} /> Log out
+  </button>
+</>
+                 ) : user ? (
+
+                  <>
+  <div className="px-4 py-2.5 border-b border-stone-line">
+    <p className="text-sm font-medium">{user.name}</p>
+    <p className="text-xs text-ink-soft/70">{user.email}</p>
+  </div>
+
+  <Link
+    href="/orders"
+    onClick={() => setLoginOpen(false)}
+    className="block px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
+  >
+    My Orders
+  </Link>
+
+  {user.role === "ADMIN" && (
+    <Link
+      href="/admin/orders"
+      onClick={() => setLoginOpen(false)}
+      className="block px-4 py-2.5 text-sm text-indigo hover:bg-stone-deep transition-colors"
+    >
+      Admin Dashboard
+    </Link>
+  )}
+
+  <button
+    onClick={() => {
+      logout();
+      setLoginOpen(false);
+    }}
+    className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
+  >
+    <LogOut size={15} /> Log out
+  </button>
+</>
+                 ) :  (
                     <>
                       <Link
                         href="/login"
@@ -193,13 +226,13 @@ export default function Navbar() {
                       >
                         Buyer Login
                       </Link>
-                      <button
-                        disabled
-                        title="Seller onboarding arrives in Stage 2"
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink-soft/40 cursor-not-allowed"
-                      >
-                        Seller Login <span className="label-text">· soon</span>
-                      </button>
+                      <Link
+                         href="/seller/login"
+                              onClick={() => setLoginOpen(false)}
+                          className="block px-4 py-2.5 text-sm hover:bg-stone-deep transition-colors"
+>
+                        Seller Login
+                         </Link>
                     </>
                   )}
                 </div>

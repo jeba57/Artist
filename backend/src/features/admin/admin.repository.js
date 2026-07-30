@@ -1,4 +1,4 @@
-import { query } from "../../config/db.js";
+import { query, withTransaction } from "../../config/db.js";
 
 export const listUsers = async () => {
   const { rows } = await query(
@@ -27,4 +27,64 @@ export const getDashboardStats = async () => {
       (SELECT COUNT(*)::int FROM artisans) AS total_artisans
   `);
   return rows[0];
+};
+
+
+
+
+const SELLER_APPLICATION_FIELDS = `
+  id, name, slug, bio, avatar_url, location, craft_specialty, years_of_experience,
+  email, owner_name, phone, gstin, pan, pan_card_url, gst_certificate_url,
+  gov_id_url, bank_proof_url, bank_details_json, pickup_address,
+  verification_status, verification_submitted_at, verified_at, verified_by,
+  rejection_reason, created_at
+`;
+
+export const listSellerApplications = async ({ statusFilter } = {}) => {
+  const params = [];
+  let where = "";
+  if (statusFilter) {
+    params.push(statusFilter);
+    where = `WHERE verification_status = $1`;
+  }
+  const { rows } = await query(
+    `SELECT ${SELLER_APPLICATION_FIELDS} FROM artisans
+     ${where}
+     ORDER BY
+       CASE verification_status WHEN 'PENDING' THEN 0 ELSE 1 END,
+       verification_submitted_at DESC NULLS LAST, created_at DESC`,
+    params
+  );
+  return rows;
+};
+
+export const getSellerApplication = async (artisanId) => {
+  const { rows } = await query(`SELECT ${SELLER_APPLICATION_FIELDS} FROM artisans WHERE id = $1`, [artisanId]);
+  return rows[0] || null;
+};
+
+export const approveSellerApplication = async (artisanId, adminUserId) => {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `UPDATE artisans
+       SET verification_status = 'APPROVED', verified = true,
+           verified_at = now(), verified_by = $2, rejection_reason = NULL, updated_at = now()
+       WHERE id = $1 AND verification_status != 'APPROVED'
+       RETURNING ${SELLER_APPLICATION_FIELDS}`,
+      [artisanId, adminUserId]
+    );
+    return rows[0] || null;
+  });
+};
+
+export const rejectSellerApplication = async (artisanId, adminUserId, reason) => {
+  const { rows } = await query(
+    `UPDATE artisans
+     SET verification_status = 'REJECTED', verified = false,
+         verified_at = now(), verified_by = $2, rejection_reason = $3, updated_at = now()
+     WHERE id = $1 AND verification_status != 'APPROVED'
+     RETURNING ${SELLER_APPLICATION_FIELDS}`,
+    [artisanId, adminUserId, reason]
+  );
+  return rows[0] || null;
 };

@@ -40,10 +40,52 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 }
 
 export const api = {
-  get: <T,>(path: string, options?: RequestOptions) => apiFetch<T>(path, { ...options, method: "GET" }),
+  get: <T,>(path: string, options?: RequestOptions) =>
+    apiFetch<T>(path, { ...options, method: "GET" }),
+
   post: <T,>(path: string, data?: unknown, options?: RequestOptions) =>
-    apiFetch<T>(path, { ...options, method: "POST", body: data ? JSON.stringify(data) : undefined }),
+    apiFetch<T>(path, {
+      ...options,
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  // 👇 Add this block here
+  postForm: async <T,>(path: string, data: FormData, options?: RequestOptions) => {
+    const { token, headers, ...rest } = options || {};
+
+    const res = await fetch(`${API_URL}${path}`, {
+      ...rest,
+      method: "POST",
+      body: data,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      credentials: "include",
+      cache: rest.cache ?? "no-store",
+    });
+
+    const body = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
+
+    if (!res.ok || !body) {
+      throw new ApiClientError(
+        body?.message || `Request failed (${res.status})`,
+        res.status,
+        (body as any)?.details
+      );
+    }
+
+    return body;
+  },
+
   patch: <T,>(path: string, data?: unknown, options?: RequestOptions) =>
-    apiFetch<T>(path, { ...options, method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
-  delete: <T,>(path: string, options?: RequestOptions) => apiFetch<T>(path, { ...options, method: "DELETE" }),
+    apiFetch<T>(path, {
+      ...options,
+      method: "PATCH",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  delete: <T,>(path: string, options?: RequestOptions) =>
+    apiFetch<T>(path, { ...options, method: "DELETE" }),
 };
