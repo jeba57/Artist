@@ -109,6 +109,7 @@ export const resubmitApplication = async (artisanId, updates) => {
   return toSafeSeller(updated);
 };
 
+
 /** Strips password hash before anything ever reaches the client. */
 const toSafeSeller = (artisan) => {
   const { password_hash, ...safe } = artisan;
