@@ -63,4 +63,5 @@ export const toProductDetailDTO = (row) => ({
     ratingAvg: row.artisan_rating_avg,
   },
   createdAt: row.created_at,
-});
+}); 
+
