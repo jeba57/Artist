@@ -21,9 +21,10 @@ router.post(
     body("shippingAddress.city").notEmpty().withMessage("City is required."),
     body("shippingAddress.pincode").notEmpty().withMessage("Pincode is required."),
     body("shippingAddress.phone").notEmpty().withMessage("Phone number is required."),
+    body("paymentMethod").optional().isIn(["ONLINE", "COD"]),
   ]),
   asyncHandler(async (req, res) => {
-    const data = await ordersService.startCheckout(req.user.id, req.body.shippingAddress);
+    const data = await ordersService.startCheckout(req.user.id, req.body.shippingAddress, req.body.paymentMethod || "ONLINE");
     sendSuccess(res, { statusCode: 201, message: "Checkout started.", data });
   })
 );
@@ -56,6 +57,15 @@ router.get(
   asyncHandler(async (req, res) => {
     const order = await ordersService.getOrderDetailForBuyer(req.user.id, req.params.id);
     sendSuccess(res, { data: order });
+  })
+);
+
+router.post(
+  "/:id/request-return",
+  validate([param("id").notEmpty(), body("reason").trim().notEmpty().withMessage("A reason is required.")]),
+  asyncHandler(async (req, res) => {
+    const order = await ordersService.requestReturn(req.user.id, req.params.id, req.body.reason);
+    sendSuccess(res, { message: "Return requested — we'll arrange a pickup.", data: order });
   })
 );
 

@@ -24,13 +24,15 @@ export const getDashboardStats = async () => {
       (SELECT COALESCE(SUM(seller_amount), 0) FROM order_items WHERE payout_status = 'PENDING') AS payouts_owed,
       (SELECT COUNT(*)::int FROM products) AS total_products,
       (SELECT COUNT(*)::int FROM users) AS total_users,
-      (SELECT COUNT(*)::int FROM artisans) AS total_artisans
+      (SELECT COUNT(*)::int FROM artisans) AS total_artisans,
+      (SELECT COUNT(*)::int FROM artisans WHERE verification_status = 'PENDING') AS pending_sellers
   `);
   return rows[0];
 };
 
-
-
+// ------------------------------------------------------------
+// SELLER APPLICATION REVIEW
+// ------------------------------------------------------------
 
 const SELLER_APPLICATION_FIELDS = `
   id, name, slug, bio, avatar_url, location, craft_specialty, years_of_experience,
@@ -87,4 +89,19 @@ export const rejectSellerApplication = async (artisanId, adminUserId, reason) =>
     [artisanId, adminUserId, reason]
   );
   return rows[0] || null;
+};
+
+// ------------------------------------------------------------
+// RETURNS
+// ------------------------------------------------------------
+
+export const listReturnRequests = async () => {
+  const { rows } = await query(
+    `SELECT o.id, o.return_status, o.return_reason, o.return_requested_at, o.total_amount,
+            u.name AS buyer_name, u.email AS buyer_email
+     FROM orders o JOIN users u ON u.id = o.user_id
+     WHERE o.return_status != 'NONE'
+     ORDER BY o.return_requested_at DESC`
+  );
+  return rows;
 };

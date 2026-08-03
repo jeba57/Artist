@@ -9,12 +9,7 @@ const commissionPercent = () => Number(process.env.PLATFORM_COMMISSION_PERCENT |
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
-export const startCheckout = async (userId, shippingAddress) => {
-  if (!isRazorpayConfigured()) {
-    throw ApiError.badRequest(
-      "Payments aren't set up yet — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to backend/.env (see README)."
-    );
-  }
+export const startCheckout = async (userId, shippingAddress, paymentMethod = "ONLINE") => {
   if (!shippingAddress?.fullName || !shippingAddress?.line1 || !shippingAddress?.city || !shippingAddress?.pincode || !shippingAddress?.phone) {
     throw ApiError.badRequest("Full shipping address (name, address line, city, pincode, phone) is required.");
   }
@@ -44,6 +39,31 @@ export const startCheckout = async (userId, shippingAddress) => {
 
   const totalAmount = round2(lineItems.reduce((sum, i) => sum + i.lineTotal, 0));
 
+  // --- Cash on Delivery: no Razorpay involved at all. The order is
+  // placed immediately; the courier collects payment at the door,
+  // which is what marks it PAID (see applyShipmentStatusUpdate's
+  // markCodPaid logic, triggered by the delivery webhook). ---
+  if (paymentMethod === "COD") {
+    const orderId = await ordersRepo.createPendingOrder({
+      userId, totalAmount, shippingAddress, razorpayOrderId: null, lineItems,
+      paymentMethod: "COD", codAmount: totalAmount,
+    });
+
+    await query(`DELETE FROM cart_items WHERE user_id = $1`, [userId]);
+
+    const fullOrder = await ordersRepo.getOrderWithItems(orderId);
+    await sendAdminOrderNotification(fullOrder).catch((err) => console.error("[email] admin notify failed:", err.message));
+
+    return { orderId, paymentMethod: "COD", codAmount: totalAmount, placedImmediately: true };
+  }
+
+  // --- Online payment: existing Razorpay flow, unchanged. ---
+  if (!isRazorpayConfigured()) {
+    throw ApiError.badRequest(
+      "Payments aren't set up yet — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to backend/.env (see README)."
+    );
+  }
+
   const razorpay = getRazorpay();
   const razorpayOrder = await razorpay.orders.create({
     amount: Math.round(totalAmount * 100), // paise
@@ -57,6 +77,7 @@ export const startCheckout = async (userId, shippingAddress) => {
     shippingAddress,
     razorpayOrderId: razorpayOrder.id,
     lineItems,
+    paymentMethod: "ONLINE",
   });
 
   return {
@@ -66,6 +87,7 @@ export const startCheckout = async (userId, shippingAddress) => {
     currency: razorpayOrder.currency,
     keyId: process.env.RAZORPAY_KEY_ID,
     commissionPercent: commission,
+    placedImmediately: false,
   };
 };
 
@@ -104,5 +126,33 @@ export const getBuyerOrders = (userId) => ordersRepo.listOrdersForBuyer(userId);
 export const getOrderDetailForBuyer = async (userId, orderId) => {
   const order = await ordersRepo.getOrderWithItems(orderId);
   if (!order || order.user_id !== userId) throw ApiError.notFound("Order not found.");
-  return order;
+  const shipmentEvents = await ordersRepo.getShipmentEvents(orderId);
+  return { ...order, shipmentEvents };
+};
+
+export const requestReturn = async (userId, orderId, reason) => {
+  if (!reason || reason.trim().length < 5) {
+    throw ApiError.badRequest("Please tell us why you're returning this (at least 5 characters).");
+  }
+
+  const updated = await ordersRepo.requestOrderReturn({ orderId, userId, reason: reason.trim() });
+  if (!updated) {
+    throw ApiError.badRequest("This order can't be returned right now — it may not be delivered yet, or a return was already requested.");
+  }
+
+  // Best-effort reverse-pickup creation. A return request should
+  // still succeed even if the shipping provider call fails — an
+  // admin can retry/arrange pickup manually, same philosophy as the
+  // email notifications elsewhere in this app.
+  try {
+    const { getShippingProvider } = await import("../../integrations/shipping/index.js");
+    const provider = getShippingProvider();
+    const fullOrder = await ordersRepo.getOrderWithItems(orderId);
+    const { returnAwbCode } = await provider.requestReturnPickup({ order: fullOrder, reason });
+    if (returnAwbCode) await ordersRepo.setReturnAwb(orderId, returnAwbCode);
+  } catch (err) {
+    console.error("[returns] Failed to create reverse pickup — needs manual handling:", err.message);
+  }
+
+  return updated;
 };

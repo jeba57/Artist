@@ -7,8 +7,6 @@ import cookieParser from "cookie-parser";
 import "dotenv/config";
 
 import authRoutes from "./features/auth/auth.routes.js";
-import sellerAuthRoutes from "./features/seller/seller.routes.js";
-import sellerProductsRoutes from "./features/seller/seller.products.routes.js";
 import productsRoutes from "./features/products/products.routes.js";
 import categoriesRoutes from "./features/categories/categories.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
@@ -17,6 +15,10 @@ import reviewsRoutes from "./features/reviews/reviews.routes.js";
 import makersRoutes from "./features/makers/makers.routes.js";
 import ordersRoutes from "./features/orders/orders.routes.js";
 import adminRoutes from "./features/admin/admin.routes.js";
+import sellerAuthRoutes from "./features/seller/seller.routes.js";
+import sellerProductsRoutes from "./features/seller/seller.products.routes.js";
+import sellerOrdersRoutes from "./features/seller/seller.orders.routes.js";
+import shippingWebhookRoutes from "./features/webhooks/shipping.webhook.routes.js";
 
 import { notFoundHandler, errorHandler } from "./middlewares/errorHandler.js";
 
@@ -42,8 +44,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/seller/auth", sellerAuthRoutes);
-app.use("/api/seller/products", sellerProductsRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/cart", cartRoutes);
@@ -52,6 +52,10 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/makers", makersRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/seller/auth", sellerAuthRoutes);
+app.use("/api/seller/products", sellerProductsRoutes);
+app.use("/api/seller/orders", sellerOrdersRoutes);
+app.use("/api/webhooks", shippingWebhookRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

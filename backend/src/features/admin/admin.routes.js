@@ -29,18 +29,18 @@ router.get(
   asyncHandler(async (req, res) => {
     const order = await ordersRepo.getOrderWithItems(req.params.id);
     if (!order) throw ApiError.notFound("Order not found.");
-    sendSuccess(res, { data: order });
+    const shipmentEvents = await ordersRepo.getShipmentEvents(req.params.id);
+    sendSuccess(res, { data: { ...order, shipmentEvents } });
   })
 );
 
-// The order workflow: PENDING -> CONFIRMED -> SHIPPED -> DELIVERED.
-// Each call advances exactly one stage; the repository rejects
-// anything that isn't the correct next step for the order's current
-// status. Reaching DELIVERED is also what marks each line item's
-// maker payout as PENDING (ready for you to pay out).
+// Admin's one remaining manual transition: PENDING -> CONFIRMED.
+// Everything from READY_FOR_PICKUP onward is seller-triggered (real
+// shipment creation) or webhook-driven (courier status updates) —
+// see seller.orders.routes.js and shipping.webhook.routes.js.
 router.post(
   "/orders/:id/status",
-  validate([param("id").notEmpty(), body("status").isIn(["CONFIRMED", "SHIPPED", "DELIVERED"])]),
+  validate([param("id").notEmpty(), body("status").isIn(["CONFIRMED"])]),
   asyncHandler(async (req, res) => {
     const order = await ordersRepo.advanceOrderStatus({
       orderId: req.params.id,
@@ -98,9 +98,9 @@ router.get(
   })
 );
 
-
-
-
+// ------------------------------------------------------------
+// SELLER APPLICATION REVIEW
+// ------------------------------------------------------------
 
 router.get(
   "/sellers",
@@ -142,7 +142,36 @@ router.post(
   })
 );
 
+// ------------------------------------------------------------
+// RETURNS
+// ------------------------------------------------------------
 
+router.get(
+  "/returns",
+  asyncHandler(async (req, res) => {
+    const returns = await adminRepo.listReturnRequests();
+    sendSuccess(res, { data: returns });
+  })
+);
 
+router.post(
+  "/orders/:id/return/approve",
+  validate([param("id").notEmpty()]),
+  asyncHandler(async (req, res) => {
+    const order = await ordersRepo.decideReturn({ orderId: req.params.id, approve: true, adminUserId: req.user.id });
+    if (!order) throw ApiError.badRequest("No pending return request for this order.");
+    sendSuccess(res, { message: "Return approved.", data: order });
+  })
+);
+
+router.post(
+  "/orders/:id/return/reject",
+  validate([param("id").notEmpty()]),
+  asyncHandler(async (req, res) => {
+    const order = await ordersRepo.decideReturn({ orderId: req.params.id, approve: false, adminUserId: req.user.id });
+    if (!order) throw ApiError.badRequest("No pending return request for this order.");
+    sendSuccess(res, { message: "Return rejected.", data: order });
+  })
+);
 
 export default router;
