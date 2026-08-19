@@ -34,7 +34,7 @@ export default function Footer() {
 
       <div className="border-t border-stone/10">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 py-5 flex flex-col sm:flex-row gap-2 items-center justify-between">
-          <p className="label-text text-stone/35">© {new Date().getFullYear()} Artist — Stage 01</p>
+          <p className="label-text text-stone/35">© {new Date().getFullYear()} Artist</p>
           <p className="label-text text-stone/35">Made for makers, by hand</p>
         </div>
       </div>
